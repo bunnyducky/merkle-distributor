@@ -83,6 +83,7 @@ pub mod merkle_distributor {
         amount: u64,
         proof: Vec<[u8; 32]>,
     ) -> ProgramResult {
+        //TODO check deadline
         let claim_status = &mut ctx.accounts.claim_status;
         require!(claim_status.claimed_amount < amount, NoClaimableAmount);
 
@@ -170,6 +171,41 @@ pub mod merkle_distributor {
         distributor.admin_auth = ctx.accounts.new_admin_auth.key();
 
         Ok(())
+    }
+    pub fn update_claim_deadline(
+        ctx: Context<UpdateClaimDeadline>,
+        claim_deadline: i64,
+    ) -> ProgramResult {
+        //TODO param check
+        let account = &mut ctx.accounts.distributor;
+
+        account.claim_deadline = Option::Some(claim_deadline);
+
+        Ok(())
+    }
+
+    #[allow(deprecated)]
+    pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> ProgramResult {
+        require!(amount <= ctx.accounts.from.amount, InvalidParams);
+
+        let seeds = [
+            b"MerkleDistributor".as_ref(),
+            &ctx.accounts.distributor.base.to_bytes(),
+            &[ctx.accounts.distributor.bump],
+        ];
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.from.to_account_info(),
+                    to: ctx.accounts.to.to_account_info(),
+                    authority: ctx.accounts.distributor.to_account_info(),
+                },
+            )
+            .with_signer(&[&seeds[..]]),
+            amount,
+        )
     }
 }
 
@@ -268,6 +304,31 @@ pub struct UpdateAdminAuth<'info> {
     pub distributor: Account<'info, MerkleDistributor>,
 }
 
+#[derive(Accounts)]
+pub struct UpdateClaimDeadline<'info> {
+    pub admin_auth: Signer<'info>,
+
+    #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
+    pub distributor: Account<'info, MerkleDistributor>,
+}
+
+#[derive(Accounts)]
+pub struct AdminWithdraw<'info> {
+    #[account(has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
+    pub distributor: Account<'info, MerkleDistributor>,
+
+    pub admin_auth: Signer<'info>,
+
+    #[account(mut, constraint = from.owner == distributor.key())]
+    pub from: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub to: Account<'info, TokenAccount>,
+
+    /// SPL [Token] program.
+    pub token_program: Program<'info, Token>,
+}
+
 /// State for the account which distributes tokens.
 #[account]
 #[derive(Default)]
@@ -292,6 +353,8 @@ pub struct MerkleDistributor {
     pub total_amount_claimed: u64,
     /// Number of nodes that have been claimed.
     pub num_nodes_claimed: u64,
+
+    pub claim_deadline: Option<i64>, //TODO we need to check distributor size for legacy accounts
 }
 
 /// Holds whether or not a claimant has claimed tokens.
@@ -340,5 +403,7 @@ pub enum ErrorCode {
     #[msg("no claimable amount")]
     NoClaimableAmount,
     #[msg("update root no change")]
-    UpdateRootNoChange
+    UpdateRootNoChange,
+    #[msg("Invalid params")]
+    InvalidParams,
 }

@@ -83,7 +83,11 @@ pub mod merkle_distributor {
         amount: u64,
         proof: Vec<[u8; 32]>,
     ) -> ProgramResult {
-        //TODO check deadline
+        if **ctx.accounts.config.lamports.borrow() > 0u64 {
+            let config: Account<Config> = Account::try_from(&ctx.accounts.config)?;
+            require!(config.is_before_deadline(), ExceededDeadline);
+        }
+
         let claim_status = &mut ctx.accounts.claim_status;
         require!(claim_status.claimed_amount < amount, NoClaimableAmount);
 
@@ -172,14 +176,14 @@ pub mod merkle_distributor {
 
         Ok(())
     }
-    pub fn update_claim_deadline(
-        ctx: Context<UpdateClaimDeadline>,
-        claim_deadline: i64,
-    ) -> ProgramResult {
-        //TODO param check
-        let account = &mut ctx.accounts.distributor;
+    pub fn update_config(ctx: Context<UpdateConfig>, claim_deadline: Option<i64>) -> ProgramResult {
+        if claim_deadline.is_some() {
+            require!(claim_deadline.unwrap() >= 0, InvalidParams);
+        }
 
-        account.claim_deadline = Option::Some(claim_deadline);
+        let config = &mut ctx.accounts.config;
+        config.distributor = ctx.accounts.distributor.key(); //init for empty config
+        config.claim_deadline = claim_deadline;
 
         Ok(())
     }
@@ -259,6 +263,9 @@ pub struct Claim<'info> {
     #[account(mut)]
     pub distributor: Account<'info, MerkleDistributor>,
 
+    #[account(seeds = [&b"distributor_config"[..], distributor.key().as_ref()], bump)]
+    pub config: AccountInfo<'info>,
+
     /// Status of the claim.
     #[account(
     init_if_needed,
@@ -305,11 +312,20 @@ pub struct UpdateAdminAuth<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UpdateClaimDeadline<'info> {
+pub struct UpdateConfig<'info> {
+    #[account(mut)]
     pub admin_auth: Signer<'info>,
 
     #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
     pub distributor: Account<'info, MerkleDistributor>,
+
+    #[account(init_if_needed, seeds = [
+        &b"distributor_config"[..], distributor.key().as_ref(),
+    ], bump, space = 256, payer = admin_auth)]
+    pub config: Account<'info, Config>,
+
+    /// The [System] program.
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -322,7 +338,7 @@ pub struct AdminWithdraw<'info> {
     #[account(mut, constraint = from.owner == distributor.key())]
     pub from: Account<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(mut, constraint = to.mint == distributor.mint)]
     pub to: Account<'info, TokenAccount>,
 
     /// SPL [Token] program.
@@ -353,8 +369,23 @@ pub struct MerkleDistributor {
     pub total_amount_claimed: u64,
     /// Number of nodes that have been claimed.
     pub num_nodes_claimed: u64,
+}
 
+#[account]
+#[derive(Default)]
+pub struct Config {
+    pub distributor: Pubkey,
     pub claim_deadline: Option<i64>, //TODO we need to check distributor size for legacy accounts
+}
+
+impl Config {
+    pub fn is_before_deadline(&self) -> bool {
+        if self.claim_deadline.is_none() {
+            return true;
+        }
+
+        self.claim_deadline.unwrap() > Clock::get().unwrap().unix_timestamp
+    }
 }
 
 /// Holds whether or not a claimant has claimed tokens.
@@ -406,4 +437,6 @@ pub enum ErrorCode {
     UpdateRootNoChange,
     #[msg("Invalid params")]
     InvalidParams,
+    #[msg("Exceeded deadline")]
+    ExceededDeadline,
 }

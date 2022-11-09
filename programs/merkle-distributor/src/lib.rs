@@ -85,6 +85,10 @@ pub mod merkle_distributor {
     ) -> ProgramResult {
         if **ctx.accounts.config.lamports.borrow() > 0u64 {
             let config: Account<Config> = Account::try_from(&ctx.accounts.config)?;
+            require!(
+                config.distributor == ctx.accounts.distributor.key(),
+                anchor_lang::__private::ErrorCode::ConstraintAddress
+            );
             require!(config.is_before_deadline(), ExceededDeadline);
         }
 
@@ -191,6 +195,8 @@ pub mod merkle_distributor {
     #[allow(deprecated)]
     pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> ProgramResult {
         require!(amount <= ctx.accounts.from.amount, InvalidParams);
+
+        msg!("admin_withdraw lalala!");
 
         let seeds = [
             b"MerkleDistributor".as_ref(),

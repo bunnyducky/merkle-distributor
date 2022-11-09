@@ -1,11 +1,18 @@
 import { TransactionEnvelope } from "@saberhq/solana-contrib";
+import { utils } from "@project-serum/anchor";
 import {
   getATAAddress,
   getOrCreateATA,
   TOKEN_PROGRAM_ID,
 } from "@saberhq/token-utils";
-import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { Keypair, SystemProgram } from "@solana/web3.js";
+import {
+  PublicKey,
+  TransactionInstruction,
+  Keypair,
+  SystemProgram,
+  Signer,
+} from "@solana/web3.js";
+import { PROGRAM_ID } from ".";
 
 import { findClaimStatusKey, findDistributorKey } from "./pda";
 import type { MerkleDistributorSDK } from "./sdk";
@@ -107,8 +114,12 @@ export class MerkleDistributorWrapper {
     const { amount, claimant, index, proof } = args;
     const [claimStatus, bump] = await findClaimStatusKey(claimant, this.key);
 
+    const [config, _] = await PublicKey.findProgramAddress(
+      [utils.bytes.utf8.encode("distributor_config"), this.key.toBytes()],
+      PROGRAM_ID
+    );
+
     return this.program.instruction.claim(
-      args.rootVersion,
       bump,
       index,
       amount,
@@ -116,6 +127,7 @@ export class MerkleDistributorWrapper {
       {
         accounts: {
           distributor: this.key,
+          config,
           claimStatus,
           from: this.distributorATA,
           to: await getATAAddress({ mint: this.data.mint, owner: claimant }),
@@ -128,11 +140,16 @@ export class MerkleDistributorWrapper {
     );
   }
 
-  async claim(args: ClaimArgs): Promise<TransactionEnvelope> {
+  async claim(
+    args: ClaimArgs,
+    signers?: Signer[]
+  ): Promise<TransactionEnvelope> {
     const { provider } = this.sdk;
-    const tx = new TransactionEnvelope(provider, [
-      await this.claimIX(args, provider.wallet.publicKey),
-    ]);
+    const tx = new TransactionEnvelope(
+      provider,
+      [await this.claimIX(args, provider.wallet.publicKey)],
+      signers
+    );
     const { instruction } = await getOrCreateATA({
       provider,
       mint: this.data.mint,

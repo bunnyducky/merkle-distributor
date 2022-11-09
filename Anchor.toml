@@ -21,4 +21,5 @@ merkle_distributor = "PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M"
 merkle_distributor = "PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M"
 
 [scripts]
-test = "yarn mocha"
+# test = "yarn mocha"
+test = "go test -v github.com/pngfi/merkle-distributor/gotest"

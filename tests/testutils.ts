@@ -32,6 +32,12 @@ export const createKeypairWithSOL = async (
 ): Promise<Keypair> => {
   const kp = Keypair.generate();
   await provider.connection.requestAirdrop(kp.publicKey, LAMPORTS_PER_SOL);
+  for (;;) {
+    const info = await provider.connection.getAccountInfo(kp.publicKey);
+    if (info && info.lamports > 0) {
+      break;
+    }
+  }
   return kp;
 };
 

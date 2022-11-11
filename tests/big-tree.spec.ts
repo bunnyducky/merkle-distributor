@@ -68,6 +68,7 @@ describe("big tree", () => {
           amount
         ),
         claimant,
+        payer: claimant,
       });
       const pendingTx = await tx.send();
       const receipt = await pendingTx.wait();

@@ -75,6 +75,7 @@ func TestAdminWithdraw(t *testing.T) {
 }
 
 func TestUpdateConfig(t *testing.T) {
+	// t.Skip()
 
 	wsolATA := ATA(solana.SolMint, TestFeePayer)
 	basePrivk := solana.NewWallet().PrivateKey
@@ -190,5 +191,3 @@ func TestUpdateConfig(t *testing.T) {
 		require.Contains(t, strings.Join(ret.Value.Logs, ""), "0x177a")
 	}
 }
-
-func TestClaim(t *testing.T) {}

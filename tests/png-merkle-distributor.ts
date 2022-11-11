@@ -1,5 +1,5 @@
 import type { Program } from "@project-serum/anchor";
-import { BN, workspace } from "@project-serum/anchor";
+import { BN, utils, workspace } from "@project-serum/anchor";
 import {
   createAssociatedTokenAccount,
   getAssociatedTokenAddress,
@@ -144,9 +144,13 @@ describe("png-merkle-distributor", () => {
           kp.publicKey,
           airDropMint
         );
-        // const state = await program.account.merkleDistributor.fetch(
-        //   distributor
-        // );
+        const [config, _] = await PublicKey.findProgramAddress(
+          [
+            utils.bytes.utf8.encode("distributor_config"),
+            distributor.toBytes(),
+          ],
+          program.programId
+        );
         await program.rpc.claim(
           new BN(claimNonce),
           new BN(index),
@@ -155,11 +159,12 @@ describe("png-merkle-distributor", () => {
           {
             accounts: {
               distributor,
+              config,
               claimStatus,
               from: distributorHolder,
               to: kpHolder,
               claimant: kp.publicKey,
-              payer,
+              payer: kp.publicKey,
               systemProgram: SystemProgram.programId,
               tokenProgram: TOKEN_PROGRAM_ID,
             },
@@ -242,6 +247,13 @@ describe("png-merkle-distributor", () => {
           ],
           program.programId
         );
+        const [config, _] = await PublicKey.findProgramAddress(
+          [
+            utils.bytes.utf8.encode("distributor_config"),
+            distributor.toBytes(),
+          ],
+          program.programId
+        );
 
         const kpHolder = await getAssociatedTokenAddress(
           kp.publicKey,
@@ -263,7 +275,8 @@ describe("png-merkle-distributor", () => {
               from: distributorHolder,
               to: kpHolder,
               claimant: kp.publicKey,
-              payer,
+              config,
+              payer: kp.publicKey,
               systemProgram: SystemProgram.programId,
               tokenProgram: TOKEN_PROGRAM_ID,
             },

@@ -2,7 +2,6 @@ package gotest
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
@@ -21,20 +20,6 @@ type PrivateKeys map[solana.PublicKey]solana.PrivateKey
 func (keys PrivateKeys) GetPrivateKey(pk solana.PublicKey) *solana.PrivateKey {
 	k := keys[pk]
 	return &k
-}
-
-func CombineWallets(ww ...Wallet) Wallet {
-	var keys = make(PrivateKeys)
-	for _, w := range ww {
-		if m, ok := w.(PrivateKeys); ok {
-			for _, privk := range m {
-				keys[privk.PublicKey()] = privk
-			}
-		} else {
-			log.Fatalf("unknown wallet type: %v\n", w)
-		}
-	}
-	return keys
 }
 
 func AppendToWallet(w Wallet, key solana.PrivateKey) Wallet {

@@ -10,7 +10,6 @@ import {
   TransactionInstruction,
   Keypair,
   SystemProgram,
-  Signer,
 } from "@solana/web3.js";
 import { PROGRAM_ID } from ".";
 
@@ -140,16 +139,11 @@ export class MerkleDistributorWrapper {
     );
   }
 
-  async claim(
-    args: ClaimArgs,
-    signers?: Signer[]
-  ): Promise<TransactionEnvelope> {
+  async claim(args: ClaimArgs): Promise<TransactionEnvelope> {
     const { provider } = this.sdk;
-    const tx = new TransactionEnvelope(
-      provider,
-      [await this.claimIX(args, provider.wallet.publicKey)],
-      signers
-    );
+    const tx = new TransactionEnvelope(provider, [
+      await this.claimIX(args, args.payer),
+    ]);
     const { instruction } = await getOrCreateATA({
       provider,
       mint: this.data.mint,

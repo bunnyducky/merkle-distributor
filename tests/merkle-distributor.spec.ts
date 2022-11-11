@@ -66,29 +66,19 @@ describe("merkle-distributor", () => {
       );
       const distributorW = await sdk.loadDistributor(distributor);
 
-      const claimantKP = Keypair.generate();
-      const tx = await distributorW.claim(
-        {
-          index: new u64(0),
-          amount: new u64(10_000_000),
-          proof: [],
-          claimant: claimantKP.publicKey,
-        },
-        [claimantKP]
-      );
-      for (const sg of tx.signers) {
-        console.log("debug signer_A:::", sg.publicKey.toBase58());
-      }
+      const claimantKP = await createKeypairWithSOL(provider);
+      const tx = await distributorW.claim({
+        index: new u64(0),
+        amount: new u64(10_000_000),
+        proof: [],
+        claimant: claimantKP.publicKey,
+        payer: claimantKP.publicKey,
+      });
       tx.addSigners(claimantKP);
-      for (const sg of tx.signers) {
-        console.log("debug signer_B:::", sg.publicKey.toBase58());
-      }
-      console.log("debug claimantKP:", claimantKP.publicKey.toBase58());
 
       try {
         await tx.confirm();
       } catch (e) {
-        console.log("errrr", e);
         const err = (e as { errors: Error[] }).errors[0] as Error;
         expect(err.message).to.include(
           `0x${MerkleDistributorErrors.InvalidProof.code.toString(16)}`
@@ -96,7 +86,7 @@ describe("merkle-distributor", () => {
       }
     });
 
-    it.skip("success on three account tree", async () => {
+    it("success on three account tree", async () => {
       const kpOne = Keypair.generate();
       const kpTwo = Keypair.generate();
       const kpThree = Keypair.generate();
@@ -136,6 +126,7 @@ describe("merkle-distributor", () => {
             amount,
             proof,
             claimant: kp.publicKey,
+            payer: kp.publicKey,
           });
           tx.addSigners(kp);
           await expectTX(tx, `claim tokens; index ${index}`).to.be.fulfilled;
@@ -178,7 +169,7 @@ describe("merkle-distributor", () => {
       );
     });
 
-    it.skip("cannot claim more than proof", async () => {
+    it("cannot claim more than proof", async () => {
       const userKP = await createKeypairWithSOL(provider);
 
       const claimAmount = new u64(1_000_000);
@@ -198,6 +189,7 @@ describe("merkle-distributor", () => {
         amount: new u64(2_000_000),
         proof: tree.getProof(0, userKP.publicKey, claimAmount),
         claimant: userKP.publicKey,
+        payer: userKP.publicKey,
       });
       tx.addSigners(userKP);
 
@@ -211,7 +203,7 @@ describe("merkle-distributor", () => {
       }
     });
 
-    it.skip("cannot claim for address other than proof", async () => {
+    it("cannot claim for address other than proof", async () => {
       const claimant = Keypair.generate().publicKey;
       const rogueKP = await createKeypairWithSOL(provider);
 
@@ -232,6 +224,7 @@ describe("merkle-distributor", () => {
         amount: new u64(2_000_000),
         proof: tree.getProof(0, claimant, claimAmount),
         claimant,
+        payer: claimant,
       });
       tx.addSigners(rogueKP);
 

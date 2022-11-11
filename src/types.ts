@@ -45,4 +45,5 @@ export type ClaimArgs = {
   amount: u64;
   proof: Buffer[];
   claimant: PublicKey;
+  payer: PublicKey;
 };

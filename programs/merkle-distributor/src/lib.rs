@@ -26,7 +26,7 @@ declare_id!("PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M");
 fn load_optional_account<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone>(
     info: &AccountInfo<'a>,
 ) -> Result<Option<Account<'a, T>>> {
-    if **info.lamports.borrow() == 0u64 {
+    if **info.lamports.borrow() == 0u64 || info.data_len() == 0 {
         return Ok(None);
     }
     Ok(Some(Account::try_from(info)?))
@@ -94,10 +94,6 @@ pub mod merkle_distributor {
         proof: Vec<[u8; 32]>,
     ) -> ProgramResult {
         if let Some(config) = load_optional_account::<Config>(&ctx.accounts.config)? {
-            require!(
-                config.distributor == ctx.accounts.distributor.key(),
-                anchor_lang::__private::ErrorCode::ConstraintAddress
-            );
             require!(config.is_before_deadline(), ExceededDeadline);
         }
 
@@ -190,13 +186,16 @@ pub mod merkle_distributor {
         Ok(())
     }
     pub fn update_config(ctx: Context<UpdateConfig>, claim_deadline: Option<i64>) -> ProgramResult {
-        if claim_deadline.is_some() {
-            require!(claim_deadline.unwrap() >= 0, InvalidParams);
-        }
-
         let config = &mut ctx.accounts.config;
         config.distributor = ctx.accounts.distributor.key(); //init for empty config
-        config.claim_deadline = claim_deadline;
+
+        if let Some(claim_deadline) = claim_deadline {
+            match claim_deadline {
+                0 => config.claim_deadline = None,
+                x if x < 0 => return Err(ErrorCode::InvalidParams.into()),
+                _ => config.claim_deadline = Some(claim_deadline),
+            }
+        }
 
         Ok(())
     }

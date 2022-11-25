@@ -22,6 +22,16 @@ pub mod merkle_proof;
 
 declare_id!("PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M");
 
+// Load an account that may be empty. If it's empty return None.
+fn load_optional_account<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone>(
+    info: &AccountInfo<'a>,
+) -> Result<Option<Account<'a, T>>> {
+    if **info.lamports.borrow() == 0u64 {
+        return Ok(None);
+    }
+    Ok(Some(Account::try_from(info)?))
+}
+
 /// The [merkle_distributor] program.
 #[program]
 pub mod merkle_distributor {
@@ -83,8 +93,7 @@ pub mod merkle_distributor {
         amount: u64,
         proof: Vec<[u8; 32]>,
     ) -> ProgramResult {
-        if **ctx.accounts.config.lamports.borrow() > 0u64 {
-            let config: Account<Config> = Account::try_from(&ctx.accounts.config)?;
+        if let Some(config) = load_optional_account::<Config>(&ctx.accounts.config)? {
             require!(
                 config.distributor == ctx.accounts.distributor.key(),
                 anchor_lang::__private::ErrorCode::ConstraintAddress
@@ -192,7 +201,6 @@ pub mod merkle_distributor {
         Ok(())
     }
 
-    #[allow(deprecated)]
     pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> ProgramResult {
         require!(amount <= ctx.accounts.from.amount, InvalidParams);
 

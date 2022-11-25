@@ -16,7 +16,7 @@ type UpdateConfig struct {
 
 	// [0] = [WRITE, SIGNER] adminAuth
 	//
-	// [1] = [WRITE] distributor
+	// [1] = [] distributor
 	//
 	// [2] = [WRITE] config
 	//
@@ -51,7 +51,7 @@ func (inst *UpdateConfig) GetAdminAuthAccount() *ag_solanago.AccountMeta {
 
 // SetDistributorAccount sets the "distributor" account.
 func (inst *UpdateConfig) SetDistributorAccount(distributor ag_solanago.PublicKey) *UpdateConfig {
-	inst.AccountMetaSlice[1] = ag_solanago.Meta(distributor).WRITE()
+	inst.AccountMetaSlice[1] = ag_solanago.Meta(distributor)
 	return inst
 }
 

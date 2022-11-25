@@ -196,8 +196,6 @@ pub mod merkle_distributor {
     pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> ProgramResult {
         require!(amount <= ctx.accounts.from.amount, InvalidParams);
 
-        msg!("admin_withdraw lalala!");
-
         let seeds = [
             b"MerkleDistributor".as_ref(),
             &ctx.accounts.distributor.base.to_bytes(),
@@ -322,7 +320,7 @@ pub struct UpdateConfig<'info> {
     #[account(mut)]
     pub admin_auth: Signer<'info>,
 
-    #[account(mut, has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
+    #[account(has_one = admin_auth @ ErrorCode::DistributorAdminMismatch)]
     pub distributor: Account<'info, MerkleDistributor>,
 
     #[account(init_if_needed, seeds = [

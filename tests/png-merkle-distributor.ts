@@ -17,6 +17,7 @@ import {
 } from "@solana/web3.js";
 import { BalanceTree, toBytes32Array } from "../src/utils";
 import assert from "assert";
+import { MerkleDistributorSDK } from "../src";
 
 const program: Program = workspace.MerkleDistributor;
 const [provider, payer] = [program.provider, program.provider.wallet.publicKey];
@@ -388,32 +389,60 @@ describe("png-merkle-distributor", () => {
     assert.equal(state.claimDeadline.toString(), "2");
     //TODO account size should be 256
 
-    const [claimStatus] = await PublicKey.findProgramAddress(
-      [Buffer.from("ClaimStatus"), distributor.toBuffer(), payer.toBuffer()],
-      program.programId
+    const sdk = MerkleDistributorSDK.load({ provider: provider as any });
+    const sdkD = await sdk.loadDistributor(distributor);
+    const ix = await sdkD.claimIX(
+      {
+        index: new BN(1),
+        amount: new BN(1),
+        proof: [root],
+        claimant: payer,
+        payer: payer,
+      },
+      payer
     );
+
+    await assert.rejects(
+      async () => {
+        await provider.send(
+          new Transaction().add(
+            await createAssociatedTokenAccount(payer, distributor, airDropMint),
+            ix
+          )
+        );
+      },
+      (err) => {
+        return err.toString().indexOf("0x177a") > 0;
+      },
+      "should fail for deadline "
+    );
+
+    // const [claimStatus] = await PublicKey.findProgramAddress(
+    //   [Buffer.from("ClaimStatus"), distributor.toBuffer(), payer.toBuffer()],
+    //   program.programId
+    // );
 
     // TypeError: src.reduce is not a function
     // I don't know why, i just do not want to fix this, fuck js.
     // TODO FIXME fix this test, add asserts
-    await program.rpc.claim(
-      new BN(1),
-      new BN(1),
-      new BN(1),
-      toBytes32Array(root), //just any proof
-      {
-        accounts: {
-          distributor,
-          config,
-          claimStatus,
-          from: await getAssociatedTokenAddress(distributor, airDropMint),
-          to: await getAssociatedTokenAddress(payer, airDropMint),
-          claimant: payer,
-          payer: payer,
-          systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-      }
-    );
+    // await program.rpc.claim(
+    //   new BN(1),
+    //   new BN(1),
+    //   new BN(1),
+    //   toBytes32Array(root), //just any proof
+    //   {
+    //     accounts: {
+    //       distributor,
+    //       config,
+    //       claimStatus,
+    //       from: await getAssociatedTokenAddress(distributor, airDropMint),
+    //       to: await getAssociatedTokenAddress(payer, airDropMint),
+    //       claimant: payer,
+    //       payer: payer,
+    //       systemProgram: SystemProgram.programId,
+    //       tokenProgram: TOKEN_PROGRAM_ID,
+    //     },
+    //   }
+    // );
   });
 });

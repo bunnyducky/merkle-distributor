@@ -289,4 +289,131 @@ describe("png-merkle-distributor", () => {
       })
     );
   });
+
+  it("Admin withdraw", async () => {
+    const base = Keypair.generate();
+    const [distributor, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("MerkleDistributor"), base.publicKey.toBuffer()],
+      program.programId
+    );
+
+    await program.rpc.newDistributor(
+      new BN(bump),
+      toBytes32Array(root),
+      new BN(maxTotalClaim),
+      new BN(maxNumNodes),
+      {
+        accounts: {
+          base: base.publicKey,
+          adminAuth: creatorKeypair.publicKey,
+          distributor: distributor,
+          mint: airDropMint,
+          payer: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+        signers: [base, creatorKeypair],
+      }
+    );
+    await provider.send(
+      new Transaction().add(
+        await createAssociatedTokenAccount(payer, distributor, airDropMint),
+        mintTo({
+          mint: airDropMint,
+          destination: await getAssociatedTokenAddress(
+            distributor,
+            airDropMint
+          ),
+          amount: 100,
+          mintAuthority: payer,
+        })
+      )
+    );
+
+    await program.rpc.adminWithdraw(new BN(100), {
+      accounts: {
+        distributor,
+        adminAuth: creatorKeypair.publicKey,
+        from: await getAssociatedTokenAddress(distributor, airDropMint),
+        to: await getAssociatedTokenAddress(payer, airDropMint),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      signers: [creatorKeypair],
+    });
+  });
+
+  it("Distributor config", async () => {
+    await program.provider.connection.requestAirdrop(
+      creatorKeypair.publicKey,
+      1e9
+    );
+
+    const base = Keypair.generate();
+    const [distributor, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("MerkleDistributor"), base.publicKey.toBuffer()],
+      program.programId
+    );
+
+    await program.rpc.newDistributor(
+      new BN(bump),
+      toBytes32Array(root),
+      new BN(maxTotalClaim),
+      new BN(maxNumNodes),
+      {
+        accounts: {
+          base: base.publicKey,
+          adminAuth: creatorKeypair.publicKey,
+          distributor: distributor,
+          mint: airDropMint,
+          payer: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+        signers: [base, creatorKeypair],
+      }
+    );
+
+    const [config] = await PublicKey.findProgramAddress(
+      [Buffer.from("distributor_config"), distributor.toBuffer()],
+      program.programId
+    );
+    await program.rpc.updateConfig(new BN(2), {
+      accounts: {
+        adminAuth: creatorKeypair.publicKey,
+        distributor,
+        config,
+        systemProgram: SystemProgram.programId,
+      },
+      signers: [creatorKeypair],
+    });
+    const state = await program.account.config.fetch(config);
+    assert.equal(state.claimDeadline.toString(), "2");
+    //TODO account size should be 256
+
+    const [claimStatus] = await PublicKey.findProgramAddress(
+      [Buffer.from("ClaimStatus"), distributor.toBuffer(), payer.toBuffer()],
+      program.programId
+    );
+
+    // TypeError: src.reduce is not a function
+    // I don't know why, i just do not want to fix this, fuck js.
+    // TODO FIXME fix this test, add asserts
+    await program.rpc.claim(
+      new BN(1),
+      new BN(1),
+      new BN(1),
+      toBytes32Array(root), //just any proof
+      {
+        accounts: {
+          distributor,
+          config,
+          claimStatus,
+          from: await getAssociatedTokenAddress(distributor, airDropMint),
+          to: await getAssociatedTokenAddress(payer, airDropMint),
+          claimant: payer,
+          payer: payer,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
+      }
+    );
+  });
 });

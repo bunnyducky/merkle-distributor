@@ -25,6 +25,6 @@ production = []
 default = []
 
 [dependencies]
-anchor-lang = ">=0.17.0"
-anchor-spl = ">=0.17.0"
+anchor-lang = "=0.20.1"
+anchor-spl = "=0.20.1"
 vipers = "1.5.5"

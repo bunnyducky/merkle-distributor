@@ -66,13 +66,13 @@ describe("merkle-distributor", () => {
       );
       const distributorW = await sdk.loadDistributor(distributor);
 
-      const claimantKP = Keypair.generate();
+      const claimantKP = await createKeypairWithSOL(provider);
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(10_000_000),
         proof: [],
         claimant: claimantKP.publicKey,
+        payer: claimantKP.publicKey,
       });
       tx.addSigners(claimantKP);
 
@@ -122,11 +122,11 @@ describe("merkle-distributor", () => {
           const proof = tree.getProof(index, kp.publicKey, amount);
 
           const tx = await distributorW.claim({
-            rootVersion: distributorW.data.rootVersion,
             index: new u64(index),
             amount,
             proof,
             claimant: kp.publicKey,
+            payer: kp.publicKey,
           });
           tx.addSigners(kp);
           await expectTX(tx, `claim tokens; index ${index}`).to.be.fulfilled;
@@ -144,7 +144,9 @@ describe("merkle-distributor", () => {
 
           const claimStatus = await distributorW.getClaimStatus(kp.publicKey);
           expect(claimStatus.claimant).to.eqAddress(kp.publicKey);
-          expect(claimStatus.claimedAmount.toString()).to.equal(amount.toString());
+          expect(claimStatus.claimedAmount.toString()).to.equal(
+            amount.toString()
+          );
         })
       );
 
@@ -183,11 +185,11 @@ describe("merkle-distributor", () => {
       const distributorW = await sdk.loadDistributor(distributor);
 
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(2_000_000),
         proof: tree.getProof(0, userKP.publicKey, claimAmount),
         claimant: userKP.publicKey,
+        payer: userKP.publicKey,
       });
       tx.addSigners(userKP);
 
@@ -218,11 +220,11 @@ describe("merkle-distributor", () => {
       const distributorW = await sdk.loadDistributor(distributor);
 
       const tx = await distributorW.claim({
-        rootVersion: distributorW.data.rootVersion,
         index: new u64(0),
         amount: new u64(2_000_000),
         proof: tree.getProof(0, claimant, claimAmount),
         claimant,
+        payer: claimant,
       });
       tx.addSigners(rogueKP);
 

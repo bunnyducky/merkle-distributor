@@ -37,10 +37,7 @@ describe("parse BalanceMap", () => {
       })
     );
 
-    const {
-      claims: innerClaims,
-      tokenTotal,
-    } = parseBalanceMap(
+    const { claims: innerClaims, tokenTotal } = parseBalanceMap(
       keypairs.map((kp, i) => ({
         address: kp.publicKey.toString(),
         earnings: new u64("1000000").mul(new u64(i + 1)).toString(),

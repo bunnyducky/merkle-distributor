@@ -48,7 +48,7 @@ pub mod merkle_distributor {
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
 
         distributor.base = ctx.accounts.base.key();
@@ -72,7 +72,7 @@ pub mod merkle_distributor {
         root: [u8; 32],
         max_total_claim: u64,
         max_num_nodes: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         require!(distributor.root != root, UpdateRootNoChange);
 
@@ -92,7 +92,7 @@ pub mod merkle_distributor {
         index: u64,
         amount: u64,
         proof: Vec<[u8; 32]>,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         if let Some(config) = load_optional_account::<Config>(&ctx.accounts.config)? {
             require!(config.is_before_deadline(), ExceededDeadline);
         }
@@ -179,13 +179,13 @@ pub mod merkle_distributor {
         Ok(())
     }
 
-    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> ProgramResult {
+    pub fn update_admin_auth(ctx: Context<UpdateAdminAuth>) -> Result<()> {
         let distributor = &mut ctx.accounts.distributor;
         distributor.admin_auth = ctx.accounts.new_admin_auth.key();
 
         Ok(())
     }
-    pub fn update_config(ctx: Context<UpdateConfig>, claim_deadline: Option<i64>) -> ProgramResult {
+    pub fn update_config(ctx: Context<UpdateConfig>, claim_deadline: Option<i64>) -> Result<()> {
         let config = &mut ctx.accounts.config;
         config.distributor = ctx.accounts.distributor.key(); //init for empty config
 
@@ -200,7 +200,7 @@ pub mod merkle_distributor {
         Ok(())
     }
 
-    pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> ProgramResult {
+    pub fn admin_withdraw(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
         require!(amount <= ctx.accounts.from.amount, InvalidParams);
 
         let seeds = [
@@ -236,11 +236,12 @@ pub struct NewDistributor<'info> {
     /// [MerkleDistributor].
     #[account(
     init,
+    space = 169,
     seeds = [
     b"MerkleDistributor".as_ref(),
     base.key().to_bytes().as_ref()
     ],
-    bump = bump,
+    bump,
     payer = payer
     )]
     pub distributor: Account<'info, MerkleDistributor>,
@@ -274,18 +275,20 @@ pub struct Claim<'info> {
     #[account(mut)]
     pub distributor: Account<'info, MerkleDistributor>,
 
+    /// CHECK ..
     #[account(seeds = [&b"distributor_config"[..], distributor.key().as_ref()], bump)]
     pub config: AccountInfo<'info>,
 
     /// Status of the claim.
     #[account(
     init_if_needed,
+    space = 56,
     seeds = [
     b"ClaimStatus".as_ref(),
     distributor.key().to_bytes().as_ref(),
     claimant.key().to_bytes().as_ref()
     ],
-    bump = _bump,
+    bump ,
     payer = payer
     )]
     pub claim_status: Account<'info, ClaimStatus>,
@@ -298,7 +301,7 @@ pub struct Claim<'info> {
     #[account(mut)]
     pub to: Account<'info, TokenAccount>,
 
-    /// Who is claiming the tokens.
+    /// CHECK Who is claiming the tokens.
     pub claimant: UncheckedAccount<'info>,
 
     /// Payer of the claim.
@@ -386,7 +389,7 @@ pub struct MerkleDistributor {
 #[derive(Default)]
 pub struct Config {
     pub distributor: Pubkey,
-    pub claim_deadline: Option<i64>, //TODO we need to check distributor size for legacy accounts
+    pub claim_deadline: Option<i64>,
 }
 
 impl Config {
@@ -426,7 +429,7 @@ pub struct ClaimedEvent {
 }
 
 /// Error codes.
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Invalid Merkle proof.")]
     InvalidProof,

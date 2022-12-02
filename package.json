@@ -64,9 +64,9 @@
     "*.nix": "nixfmt"
   },
   "scripts": {
-    "buildVerifiable": "anchor build --docker-image projectserum/build:v0.25.0 --verifiable",
-    "verifyBuffer": "cd programs/merkle-distributor && anchor verify --provider.cluster mainnet --docker-image projectserum/build:v0.25.0 6xrNFqXggENGF9TAuEYbWK5SMx3VJWng8tweKJsQsMd5 ",
-    "verifyProgram": "cd programs/merkle-distributor && anchor verify --provider.cluster mainnet --docker-image projectserum/build:v0.25.0 PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M",
+    "buildVerifiable": "anchor build --docker-image projectserum/build:v0.25.0 --verifiable --solana-version 1.13.5",
+    "verifyBuffer": "cd programs/merkle-distributor && anchor verify --provider.cluster mainnet --docker-image projectserum/build:v0.25.0 --solana-version 1.13.5 6xrNFqXggENGF9TAuEYbWK5SMx3VJWng8tweKJsQsMd5 ",
+    "verifyProgram": "cd programs/merkle-distributor && anchor verify --provider.cluster mainnet --docker-image projectserum/build:v0.25.0 --solana-version 1.13.5 PMRKTWvK9f1cPkQuXvvyDPmyCSoq8FdedCimXrXJp8M",
     "build": "tsc -P tsconfig.cjs.json && tsc -P tsconfig.build.json",
     "typecheck": "tsc",
     "lint": "eslint . --cache",

@@ -35,8 +35,6 @@ fn load_optional_account<'a, T: AccountSerialize + AccountDeserialize + Owner + 
 /// The [merkle_distributor] program.
 #[program]
 pub mod merkle_distributor {
-    #[allow(deprecated)]
-    use vipers::assert_ata;
 
     use super::*;
 
@@ -85,7 +83,6 @@ pub mod merkle_distributor {
     }
 
     /// Claims tokens from the [MerkleDistributor].
-    #[allow(deprecated)]
     pub fn claim(
         ctx: Context<Claim>,
         _bump: u8,
@@ -135,11 +132,6 @@ pub mod merkle_distributor {
             &[ctx.accounts.distributor.bump],
         ];
 
-        assert_ata!(
-            ctx.accounts.from,
-            ctx.accounts.distributor,
-            distributor.mint
-        );
         require!(
             ctx.accounts.to.owner == claimant_account.key(),
             OwnerMismatch
@@ -294,7 +286,11 @@ pub struct Claim<'info> {
     pub claim_status: Account<'info, ClaimStatus>,
 
     /// Distributor ATA containing the tokens to distribute.
-    #[account(mut)]
+    #[account(
+        mut, 
+        associated_token::mint = distributor.mint,
+        associated_token::authority = distributor,
+    )]
     pub from: Account<'info, TokenAccount>,
 
     /// Account to send the claimed tokens to.
